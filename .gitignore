@@ -1,0 +1,24 @@
+# Secrets / local config
+.env
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# dbt
+dbt/**/target/
+dbt/**/dbt_packages/
+dbt/**/logs/
+dbt/**/profiles.yml
+
+# Airflow
+logs/
+airflow.db
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

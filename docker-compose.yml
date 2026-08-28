@@ -1,0 +1,91 @@
+# two separate postgres instances: one for airflow's own metadata,
+# one for the actual weather data (what dbt will query later)
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.9.3-python3.11
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    PYTHONPATH: /opt/airflow/scripts
+    WAREHOUSE_DB_DSN: postgresql://${WAREHOUSE_DB_USER:-weather}:${WAREHOUSE_DB_PASSWORD:-weather}@warehouse-db:5432/${WAREHOUSE_DB_NAME:-weather}
+    # installs extra deps every container start - fine for local dev,
+    # would swap for a proper Dockerfile if this ever went further
+    _PIP_ADDITIONAL_REQUIREMENTS: requests==2.32.3 psycopg2-binary==2.9.9
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./scripts:/opt/airflow/scripts
+    - airflow-logs:/opt/airflow/logs
+  depends_on:
+    airflow-db:
+      condition: service_healthy
+
+services:
+  airflow-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 10
+
+  warehouse-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${WAREHOUSE_DB_USER:-weather}
+      POSTGRES_PASSWORD: ${WAREHOUSE_DB_PASSWORD:-weather}
+      POSTGRES_DB: ${WAREHOUSE_DB_NAME:-weather}
+    ports:
+      - "5433:5432"
+    volumes:
+      - warehouse-db-data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${WAREHOUSE_DB_USER:-weather}"]
+      interval: 5s
+      retries: 10
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username "${AIRFLOW_ADMIN_USER:-admin}" \
+          --password "${AIRFLOW_ADMIN_PASSWORD:-admin}" \
+          --firstname Admin --lastname User \
+          --role Admin --email admin@example.com
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+volumes:
+  airflow-db-data:
+  warehouse-db-data:
+  airflow-logs:
