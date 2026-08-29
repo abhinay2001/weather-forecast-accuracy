@@ -2,13 +2,14 @@
 
 Tracks how accurate weather forecasts actually are at different lead times - is a 1-day-out forecast really better than a 7-day-out one, and does it vary by city? Airflow pulls daily forecasts and actuals from [Open-Meteo](https://open-meteo.com) (free, no key needed) into Postgres, dbt turns that into accuracy numbers, and a dashboard shows the result.
 
-**Status:** infra + forecast extraction are done and tested. Actuals extraction, dbt models, and the dashboard are next.
+**Status:** infra, forecast extraction, and actuals extraction are done and tested. dbt models and the dashboard are next.
 
 ## Design notes
 
 - Two separate Postgres containers - one for Airflow's own metadata, one for the actual weather data. Keeps them from getting tangled together.
 - `raw.forecast_daily` has a unique constraint on (city, forecast_made_on, target_date), so re-running the DAG after a failure overwrites that day instead of creating duplicates. Tested against a real Postgres instance in `tests/`, not just assumed.
 - The forecast DAG has `catchup=False` on purpose - "today's forecast" only makes sense on the day it's fetched, there's no way to backfill what the API would've said in the past. Actuals come from a separate DAG hitting the historical/reanalysis endpoint, which can be backfilled.
+- The actuals DAG re-sweeps a trailing 14-day window (ending 7 days back, past ERA5's processing lag) instead of just grabbing "yesterday". A day that's still unresolved gets skipped rather than written as null, and picked up automatically on a later sweep once it resolves - tested in `tests/test_fetch_actuals_integration.py`, including the "previously-null day gets filled in" case specifically.
 
 ## Architecture
 
@@ -61,8 +62,8 @@ dbt/      dbt models (coming next)
 - [x] Docker Compose infra
 - [x] City list (12 cities, mixed climates)
 - [x] Forecast extraction + idempotent upsert + daily DAG + tests
-- [ ] Actuals extraction from the historical API (handling the ERA5 lag)
-- [ ] Backfill from Open-Meteo's forecast archive so there's data from day one
+- [x] Actuals extraction from the historical API, sweeping a trailing window to handle the ERA5 lag
+- [x] Backfill script to seed 90 days of history in one shot instead of waiting weeks
 - [ ] dbt: staging → intermediate (forecast/actual join + error calc) → marts
 - [ ] CI running tests + dbt test on push
 - [ ] Dashboard
