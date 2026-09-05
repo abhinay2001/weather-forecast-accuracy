@@ -1,7 +1,5 @@
-# For running/testing extraction scripts locally, outside Docker.
-# Inside the Airflow containers, these are installed via
-# _PIP_ADDITIONAL_REQUIREMENTS in docker-compose.yml instead.
 requests==2.32.3
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.12
 pytest==8.3.2
-python-dotenv==1.0.1
+dbt-core==1.12.3
+dbt-postgres==1.11.0
