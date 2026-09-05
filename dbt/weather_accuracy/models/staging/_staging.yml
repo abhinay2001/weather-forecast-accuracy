@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: stg_forecast
+    columns:
+      - name: city
+        tests: [not_null]
+      - name: target_date
+        tests: [not_null]
+      - name: lead_time_days
+        tests: [not_null]
+
+  - name: stg_actuals
+    columns:
+      - name: city
+        tests: [not_null]
+      - name: target_date
+        tests: [not_null]

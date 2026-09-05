@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: mart_accuracy_by_lead_time
+    description: forecast accuracy aggregated by how many days out the forecast was made - the headline result of this project
+    columns:
+      - name: lead_time_days
+        tests: [not_null, unique]
+
+  - name: mart_accuracy_by_city
+    description: forecast accuracy aggregated by city
+    columns:
+      - name: city
+        tests: [not_null, unique]
+
+  - name: mart_daily_summary
+    description: forecast accuracy aggregated by target date
+    columns:
+      - name: target_date
+        tests: [not_null, unique]

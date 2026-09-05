@@ -1,0 +1,12 @@
+weather_accuracy:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('WAREHOUSE_DB_HOST', 'localhost') }}"
+      port: "{{ env_var('WAREHOUSE_DB_PORT', '5433') | int }}"
+      user: "{{ env_var('WAREHOUSE_DB_USER', 'weather') }}"
+      password: "{{ env_var('WAREHOUSE_DB_PASSWORD', 'weather') }}"
+      dbname: "{{ env_var('WAREHOUSE_DB_NAME', 'weather') }}"
+      schema: analytics
+      threads: 4

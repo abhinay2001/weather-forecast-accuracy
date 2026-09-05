@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: int_forecast_vs_actual
+    description: one row per (city, forecast_made_on, target_date) where the actual outcome is now known - the core fact table for accuracy analysis
+    columns:
+      - name: city
+        tests: [not_null]
+      - name: lead_time_days
+        tests: [not_null]
+      - name: temp_max_abs_error
+        tests: [not_null]
